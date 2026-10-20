@@ -1,0 +1,14 @@
+# Smoke test: one hostile quad on an attack run, one bird crossing,
+# and an 8 s radar jamming window. Used by Phase 0 and CI.
+id: SCN-00-smoke
+seed: 2647
+terrain: rural
+time_of_day: day
+weather: { fog: 0.0, wind_mps: 3 }
+degradation:
+  - { at_s: 40, sensor: radar, kind: jamming, duration_s: 8 }
+post: { lat: 18.5204, lon: 73.8567, sensors: [radar] }
+roe: standard-forward-post
+entities:
+  - { id: UAV-01, class: quad, hostile: true,  spawn_s: 5,  path: attack_run, from_bearing: 40,  range_m: 3000, speed_mps: 20 }
+  - { id: BIRD-1, class: bird, hostile: false, spawn_s: 12, path: straight,   from_bearing: 300, range_m: 1200, heading_deg: 120, speed_mps: 9 }

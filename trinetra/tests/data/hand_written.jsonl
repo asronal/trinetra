@@ -1,0 +1,17 @@
+{"t": 0.0, "type": "run_start", "scenario_id": "HAND-01", "seed": 1, "difficulty": "standard", "tick_hz": 10}
+{"t": 2.0, "type": "truth_spawn", "truth_id": "UAV-01", "label": "quad", "hostile": true}
+{"t": 2.0, "type": "truth_spawn", "truth_id": "UAV-02", "label": "fpv", "hostile": true}
+{"t": 3.0, "type": "truth_spawn", "truth_id": "BIRD-1", "label": "bird", "hostile": false}
+{"t": 3.0, "type": "truth_spawn", "truth_id": "UAV-03", "label": "quad", "hostile": true}
+{"t": 4.0, "type": "truth_spawn", "truth_id": "UAV-04", "label": "fixed_wing", "hostile": true}
+{"t": 5.0, "type": "truth_enter_coverage", "truth_id": "BIRD-1", "sensor": "radar"}
+{"t": 6.0, "type": "trainee_select", "track_id": 9, "truth_id": "BIRD-1"}
+{"t": 10.0, "type": "truth_enter_coverage", "truth_id": "UAV-01", "sensor": "radar"}
+{"t": 12.0, "type": "truth_enter_coverage", "truth_id": "UAV-01", "sensor": "eo"}
+{"t": 14.0, "type": "trainee_select", "track_id": 3, "truth_id": "UAV-01"}
+{"t": 15.0, "type": "trainee_select", "track_id": 4, "truth_id": "UAV-02"}
+{"t": 20.0, "type": "truth_enter_coverage", "truth_id": "UAV-02", "sensor": "radar"}
+{"t": 22.0, "type": "truth_enter_coverage", "truth_id": "UAV-03", "sensor": "radar"}
+{"t": 30.0, "type": "trainee_select", "track_id": 3, "truth_id": "UAV-01"}
+{"t": 37.0, "type": "trainee_select", "track_id": 5, "truth_id": "UAV-03"}
+{"t": 60.0, "type": "run_end", "duration_s": 60.0}

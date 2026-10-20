@@ -1,0 +1,11 @@
+# TRINETRA — Phase 0 requirements
+numpy>=1.24
+pyyaml>=6.0
+pytest>=8.0
+
+# Later phases (install when the module that needs them lands):
+# opencv-python>=4.8   # console, EO/IR emulation       (Phase 1)
+# onnxruntime>=1.16    # drone/bird classifier          (Phase 2)
+# scipy>=1.10          # tracker assignment             (Phase 1)
+# fastapi uvicorn pydantic   # AAR API                  (Phase 2)
+# pyzmq>=25            # HIL link to the Pi             (Phase 3)

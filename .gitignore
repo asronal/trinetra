@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+.venv/
+venv/
+
+# Run logs and recordings
+output/
+
+.vscode/
+.idea/
