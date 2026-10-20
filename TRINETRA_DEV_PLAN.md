@@ -2,7 +2,7 @@
 
 **AI-Enabled Drone & Counter-Drone Threat Simulation Trainer**
 Smart India Hackathon 2026 · PS **SIH26247** · Team **SkyNetics**
-Status: draft v0.1, 20 Oct 2026
+Status: v0.2, 20 Oct 2026. Phase 0 done; Phase 1 built and waiting for a teammate playtest (section 11). Repo: `C:\projects\SIH` (local git, not yet on GitHub).
 
 This is the starting point for building TRINETRA. It covers:
 - what the problem statement asks for
@@ -160,6 +160,8 @@ flowchart LR
 
 TRINETRA is its own repo (locally `C:\projects\SIH`) with a top-level package `trinetra/`. Rescue-drone modules are copied in and ported when needed (section 3.1); there is no import dependency on that repo.
 
+The tree below is the original proposal. What is actually built so far differs in a few places (the trainee interface is `server/` + `web/`, with the older OpenCV `console/` kept as an option); the README's code map is the current layout.
+
 ```text
 trinetra/
 ├── app.py                  # entry: --scenario, --difficulty, --hil, --headless
@@ -299,13 +301,13 @@ Levels: **Guided** (AI hints on) → **Standard** → **Stress** → **Swarm**.
 
 ## 8. Milestones
 
-| Phase | Target | Deliverable | Definition of done |
-|---|---|---|---|
-| **0 · Setup** | Week 1 | `trinetra/` skeleton, config, event log, CI running `pytest` | `python -m trinetra.app --scenario scenarios/smoke.yaml --headless` writes a valid JSONL log |
-| **1 · MVP (college round demo)** | Weeks 2–3 | World + 3 emulated sensors + HUD + scoring for 1 drone and 1 bird; 3 scripted scenarios | A trainee plays SCN-01..03 end to end and gets a score breakdown |
-| **2 · Brief coverage** | Weeks 4–6 | Swarms, procedural generator, all degradations, AAR dashboard, adaptive difficulty, retrained classifier | Every checkbox in section 1 is ticked |
-| **3 · HIL + polish** | Weeks 7–8 | Pi HIL agent (thermal + EO), red-cell flight with GPS-log sync, drone-operator/HADR mode | Live demo: real drone in the console, scored against GPS truth |
-| **Finale (36 h)** | National round | Problem-owner feedback, new scenario packs, UX polish | Stable demo with no crashes over 30 minutes |
+| Phase | Target | Deliverable | Definition of done | Status (20 Oct) |
+|---|---|---|---|---|
+| **0 · Setup** | Week 1 | `trinetra/` skeleton, config, event log, CI running `pytest` | `python -m trinetra.app --headless --scenario trinetra/scenarios/smoke.yaml` writes a valid JSONL log | Done (CI waits for a GitHub push) |
+| **1 · MVP (college round demo)** | Weeks 2–3 | World + 3 emulated sensors + HUD + scoring for 1 drone and 1 bird; 3 scripted scenarios | A trainee plays SCN-01..03 end to end and gets a score breakdown | Built (browser trainer); needs a teammate playtest |
+| **2 · Brief coverage** | Weeks 4–6 | Swarms, procedural generator, all degradations, AAR dashboard, adaptive difficulty, retrained classifier | Every checkbox in section 1 is ticked | Not started |
+| **3 · HIL + polish** | Weeks 7–8 | Pi HIL agent (thermal + EO), red-cell flight with GPS-log sync, drone-operator/HADR mode | Live demo: real drone in the trainer, scored against GPS truth | Not started |
+| **Finale (36 h)** | National round | Problem-owner feedback, new scenario packs, UX polish | Stable demo with no crashes over 30 minutes | |
 
 Week 1 starts 20 Oct 2026. Set real dates once the SIH 2026 timeline is confirmed.
 
@@ -318,7 +320,7 @@ SIH needs **6 members, including at least one woman**. Fill in the two open slot
 | Member | Primary ownership | Secondary |
 |---|---|---|
 | Asronal (Hardware & Integrations) | `hil_agent/`, sensor post, red-cell drone, telemetry and ground truth | Sensor-model calibration recordings |
-| Anuj D (Software) | `core/`, `console/`, app loop, event log | Code review, releases |
+| Anuj D (Software) | `core/`, the browser trainer (`server/`, `web/`), app loop, event log | Code review, releases |
 | Vishal (Model Training) | `ai/` classifier dataset, training, ONNX export, evaluation | `ai/thermal_cue.py` tuning |
 | Akilan S (Hardware Assembly) | Tripod sensor post (power, enclosure, mounts), drone prep, range-day safety checklist | Asset capture (photos, sprites) |
 | Member 5 (TBD) | `aar/`: FastAPI, SQLite, dashboard | Charts in the pitch |
@@ -367,7 +369,7 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 - [x] `ai/tracker.py`: world-coordinate tracker on radar plots, M-of-N confirmation. Tracks drop under jamming and come back with a new ID afterwards, so the trainee has to re-acquire.
 - [x] `scoring/roe.py` + `score_run()`: all four rubric metrics, ROE tree from section 6.3, plain-language notes for the AAR ("UAV-01: simulated_hard_kill at 61.0 s … earned 0.50").
 - [x] Event log: `truth_state` at 1 Hz (ROE context and AAR replay), `track_confirm` / `track_drop`; trainee events carry the simulator-resolved `truth_id`.
-- [x] Trainee console: OpenCV (decided 20 Oct 2026; browser UI can follow in Phase 2). Radar scope, thermal view cued to the selected track with a zoom inset, briefing screen, keyboard/mouse actions, score screen with notes. `core/session.py` runs one training run for both the console and the headless runner.
+- [x] Trainee console: OpenCV first (radar scope, cued thermal view, keyboard actions, score screen). Superseded the same day by the browser trainer below; kept behind `--opencv`. `core/session.py` runs one training run for every interface and the headless runner.
 - [x] Simulated engagement outcomes: soft kill 70 %, hard kill 90 %, only within 1 km; a kill removes the target and is logged as `neutralised_simulated`.
 - [x] Scenarios SCN-01 (day, single quad), SCN-02 (dusk, FPV among friendly and birds, radar dropout), SCN-03 (night, recce fixed-wing + quad under jamming, IR noise)
 - [x] Tracker fix: two-stage association (confirmed tracks pick plots first); before it, a tentative track born beside a target could take over its plots and change its ID mid-run.
@@ -397,8 +399,9 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 ## 13. Open decisions
 
 - [ ] Confirm the PS wording and category on sih.gov.in
-- [x] Trainee console: OpenCV window for Phase 1 (decided 20 Oct 2026); revisit a browser UI with the AAR dashboard in Phase 2
-- [ ] AAR stack for the MVP: Streamlit now, React later, or React from the start
+- [x] Trainee interface: browser trainer served locally by Python (decided 20 Oct 2026 after the first playtest; the OpenCV console was too hard to follow)
+- [ ] AAR stack: recommendation is to build it into the browser trainer (same server, same look) rather than Streamlit or a separate React app
+- [ ] Put the repo on GitHub (private) and add the team, so Anuj can review `core/` and the trainer and CI runs
 - [ ] Telemetry radio for live red-cell ground truth (budget)
 - [ ] Buy the HLK-LD2450 (≈ ₹1,400) now or after the MVP
 - [ ] Names and roles for members 5 and 6
