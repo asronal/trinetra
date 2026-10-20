@@ -64,3 +64,11 @@ def test_engaging_clutter_is_a_false_alarm():
     events = read_events(HAND) + [
         {"t": 95.0, "type": "trainee_respond", "track_id": 9, "truth_id": None, "action": "simulated_soft_kill"}]
     assert score_run(events).false_alarm_count == 2
+
+
+def test_repeated_wrong_orders_collapse_into_one_note():
+    events = read_events(HAND) + [
+        {"t": 95.0 + i * 0.3, "type": "trainee_respond", "track_id": 2, "truth_id": "BIRD-1",
+         "action": "simulated_soft_kill"} for i in range(18)]
+    notes = [n for n in score_run(events).notes if "soft_kill on bird" in n]
+    assert notes == ["BIRD-1: simulated_soft_kill on bird x18 (95.0-100.1 s)"]

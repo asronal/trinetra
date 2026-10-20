@@ -372,8 +372,15 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 - [x] Scenarios SCN-01 (day, single quad), SCN-02 (dusk, FPV among friendly and birds, radar dropout), SCN-03 (night, recce fixed-wing + quad under jamming, IR noise)
 - [x] Tracker fix: two-stage association (confirmed tracks pick plots first); before it, a tentative track born beside a target could take over its plots and change its ID mid-run.
 - [x] Thermal render 382 → 38 ms per frame (background at sensor resolution, supersampled patch per target only)
-- [ ] `sensors/eo.py`: emulated EO camera
-- [ ] Playtest SCN-01..03 with a teammate and tune difficulty (definition of done for Phase 1)
+- [x] **Browser trainer replaces the OpenCV console as the default** (20 Oct 2026, after the first playtest: the OpenCV screen was an expert's screen with no guidance, the classify keys were undiscoverable, and a held key fired 18 kill orders). `python -m trinetra.app` serves it locally.
+  - Day (EO) camera is a 3D view from the mast (three.js, vendored for offline use): terrain per scenario type, sky per time of day, fog, drone/bird/aircraft models at true size, zoom up to ×100. Overview map shows the whole area with oversized models and trails.
+  - Video-tracker emulation: inside 2.5 km (day) / 1.8 km (dusk) / 1.2 km (night) the cameras lock on to the target; outside, they point where the radar says (±1°).
+  - Guided mode: instruction bar for the next step, behaviour hints, the applicable ROE rule; Standard mode hides them.
+  - Plain words on screen: Contact N, km and compass direction, "coming closer at 21 m/s"; buttons for type, threat and response; kill buttons disabled with a reason when out of range.
+  - Playtest fixes: same order on the same track refused for 3 s; downed targets marked Down and refuse orders; repeated mistakes collapse into one score note.
+  - The page never receives the true identity of contacts unless "Show everything" is on.
+- [ ] `sensors/eo.py`: Python EO sensor model (for classifier training data; the trainee's EO view is the 3D camera above)
+- [ ] Playtest SCN-01..03 in the browser trainer with a teammate and tune difficulty (definition of done for Phase 1)
 
 ---
 

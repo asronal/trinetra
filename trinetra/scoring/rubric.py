@@ -188,6 +188,7 @@ def score_run(events: Iterable[dict], difficulty: Optional[str] = None,
     # ── Respond ──
     credits: Dict[str, List[float]] = {}
     soft_tried = set()
+    wrong_orders: Dict[tuple, List[float]] = {}     # (name, action, what) -> times; one note each
     for ev in events:
         if ev["type"] != "trainee_respond":
             continue
@@ -198,7 +199,8 @@ def score_run(events: Iterable[dict], difficulty: Optional[str] = None,
                 key = ("truth", tid) if tid is not None else ("track", ev["track_id"])
                 false_alarm_targets.add(key)
                 what = truth["label"] if truth else "clutter"
-                notes.append(f"{tid or 'track ' + str(ev['track_id'])}: {action} on {what} at {ev['t']:.1f} s")
+                name = tid or f"track {ev['track_id']}"
+                wrong_orders.setdefault((name, action, what), []).append(ev["t"])
             continue
         state = history.at(tid, ev["t"])
         rng, closing = (state["range_m"], state["radial_speed_mps"]) if state else (float("inf"), 0.0)
@@ -209,6 +211,12 @@ def score_run(events: Iterable[dict], difficulty: Optional[str] = None,
             notes.append(f"{tid}: {action} at {ev['t']:.1f} s ({ts.replace('_', ' ')}, {rng:.0f} m) earned {c:.2f}")
         if action == "simulated_soft_kill":
             soft_tried.add(tid)
+
+    for (name, action, what), times in wrong_orders.items():
+        if len(times) == 1:
+            notes.append(f"{name}: {action} on {what} at {times[0]:.1f} s")
+        else:
+            notes.append(f"{name}: {action} on {what} x{len(times)} ({times[0]:.1f}-{times[-1]:.1f} s)")
 
     missed = [tid for tid in in_coverage if tid not in credits]
     for tid in missed:

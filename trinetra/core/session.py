@@ -13,9 +13,9 @@ on a target within effect range removes it with a fixed probability. No
 real effector is modelled.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -33,6 +33,9 @@ from .world import ACTIVE, GONE
 # Simulated engagement outcomes (abstract training values)
 EFFECT_RANGE_M = 1000.0
 KILL_PROBABILITY = {"simulated_soft_kill": 0.7, "simulated_hard_kill": 0.9}
+# The same order on the same track within this window is refused, so a held
+# or mashed key cannot fire a burst of orders (seen in the first playtest).
+REPEAT_GUARD_S = 3.0
 
 
 class ActionError(ValueError):
@@ -43,6 +46,15 @@ class ActionError(ValueError):
 class ActionResult:
     event: dict
     message: str
+    outcome: Optional[str] = None     # kills only: "down" | "no_effect" | "out_of_range"
+
+
+@dataclass
+class Contact:
+    """The trainee's own record of a track: what they called it and what they ordered."""
+    label: Optional[str] = None
+    hostile: Optional[bool] = None
+    actions: List[str] = field(default_factory=list)
 
 
 class Session:
@@ -73,6 +85,9 @@ class Session:
         self.last_scan = None
         self.last_ir = None
         self.selected: Optional[int] = None
+        self.contacts: Dict[int, Contact] = {}
+        self.downed: set = set()                # truth ids taken down by a simulated kill
+        self._last_order: Dict[tuple, float] = {}
         self.finished = False
         self.score: Optional[RunScore] = None
 
@@ -173,28 +188,45 @@ class Session:
         tr = self._track(self.selected)
         ev = self.log.emit(self.t, "trainee_classify", track_id=tr.id, truth_id=tr.truth_id,
                            label=label, hostile=bool(hostile))
+        c = self.contacts.setdefault(tr.id, Contact())
+        c.label, c.hostile = label, bool(hostile)
         return ActionResult(ev, f"Track {tr.id}: {label.replace('_', ' ')}, {'hostile' if hostile else 'not hostile'}")
+
+    def is_down(self, track_id: int) -> bool:
+        tr = self.tracker.get(track_id)
+        return tr is not None and tr.truth_id is not None and tr.truth_id in self.downed
 
     def respond(self, action: str) -> ActionResult:
         if action not in RESPONSE_ACTIONS:
             raise ActionError(f"unknown action {action!r}")
         tr = self._track(self.selected)
+        if self.is_down(tr.id):
+            raise ActionError(f"track {tr.id} is already down")
+        last = self._last_order.get((tr.id, action))
+        if last is not None and self.t - last < REPEAT_GUARD_S:
+            raise ActionError(f"already ordered on track {tr.id}; wait for the result")
+        self._last_order[(tr.id, action)] = self.t
         ev = self.log.emit(self.t, "trainee_respond", track_id=tr.id, truth_id=tr.truth_id, action=action)
+        self.contacts.setdefault(tr.id, Contact()).actions.append(action)
         message = f"Track {tr.id}: {action.replace('_', ' ')}"
+        outcome = None
         if action in KILL_PROBABILITY:
-            message += self._apply_effect(tr, action)
-        return ActionResult(ev, message)
+            outcome = self._apply_effect(tr, action)
+            message += {"out_of_range": " (out of effect range, no effect)", "no_effect": " (no effect)",
+                        "down": " (target down)"}[outcome]
+        return ActionResult(ev, message, outcome)
 
     def _apply_effect(self, tr, action: str) -> str:
         if tr.range_m > EFFECT_RANGE_M:
-            return " (out of effect range, no effect)"
+            return "out_of_range"
         target = next((e for e in self.world.entities if e.id == tr.truth_id and e.state == ACTIVE), None)
         if target is None or self._effects_rng.random() >= KILL_PROBABILITY[action]:
-            return " (no effect)"
+            return "no_effect"
         target.state = GONE
+        self.downed.add(target.id)
         self.log.emit(self.t, "truth_despawn", truth_id=target.id, reason="neutralised_simulated")
         self._update_coverage()
-        return " (target down)"
+        return "down"
 
     # ── End ───────────────────────────────────────────────────────
     def finish(self) -> RunScore:

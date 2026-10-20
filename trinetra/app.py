@@ -1,11 +1,13 @@
 """
 TRINETRA — entry point.
 
-    python -m trinetra.app --scenario trinetra/scenarios/scn01_day_single.yaml          # trainee console
-    python -m trinetra.app --scenario trinetra/scenarios/smoke.yaml --headless          # no window, log only
+    python -m trinetra.app                                                   # trainer in the browser
+    python -m trinetra.app --scenario trinetra/scenarios/smoke.yaml --headless   # no window, log only
+    python -m trinetra.app --scenario <file> --opencv                        # old OpenCV console
 
-The headless mode runs as fast as the CPU allows and writes the event log.
-The console runs in real time. HIL arrives in Phase 3.
+The browser trainer runs a local server (127.0.0.1 only) and opens the
+page; missions are chosen on its start screen. Headless runs as fast as
+the CPU allows and writes the event log. HIL arrives in Phase 3.
 """
 
 import argparse
@@ -46,10 +48,13 @@ def run_headless(scenario: Scenario, cfg: Config, out_path, difficulty: str = "s
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="trinetra", description="TRINETRA counter-drone training simulator")
-    parser.add_argument("--scenario", required=True, help="scenario YAML file")
+    parser.add_argument("--scenario", help="scenario YAML file (headless and OpenCV modes)")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default="standard")
-    parser.add_argument("--headless", action="store_true", help="run without the console and only write the log")
-    parser.add_argument("--instructor", action="store_true", help="console starts with ground truth shown")
+    parser.add_argument("--headless", action="store_true", help="run without any interface and only write the log")
+    parser.add_argument("--opencv", action="store_true", help="use the old OpenCV console instead of the browser")
+    parser.add_argument("--port", type=int, default=8765, help="browser trainer port (default 8765)")
+    parser.add_argument("--no-browser", action="store_true", help="start the server without opening a browser")
+    parser.add_argument("--instructor", action="store_true", help="OpenCV console starts with ground truth shown")
     parser.add_argument("--hil", action="store_true", help="use live Pi sensors (Phase 3)")
     parser.add_argument("--duration", type=float, default=None, help="run length in seconds (default: scenario, else 60)")
     parser.add_argument("--seed", type=int, default=None, help="override the scenario seed")
@@ -61,6 +66,12 @@ def main(argv=None) -> int:
                         format="%(asctime)s %(name)s %(levelname)s %(message)s")
     if args.hil:
         parser.error("HIL mode arrives in Phase 3")
+    if not args.headless and not args.opencv:
+        from .server.web import serve
+        serve(port=args.port, open_browser=not args.no_browser)
+        return 0
+    if not args.scenario:
+        parser.error("--scenario is required with --headless or --opencv")
 
     cfg = Config()
     try:
