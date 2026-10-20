@@ -66,6 +66,9 @@ class Scenario:
     degradation: List[Degradation] = field(default_factory=list)
     post: Dict = field(default_factory=dict)
     roe: str = "standard"
+    title: str = ""
+    briefing: str = ""
+    duration_s: Optional[float] = None      # None: use the config default
 
 
 def load_scenario(path) -> Scenario:
@@ -123,6 +126,9 @@ def parse_scenario(data, source: str = "<scenario>") -> Scenario:
         degradation=degradation,
         post=data.get("post") or {},
         roe=str(data.get("roe", "standard")),
+        title=str(data.get("title", "")),
+        briefing=str(data.get("briefing", "")).strip(),
+        duration_s=float(data["duration_s"]) if "duration_s" in data else None,
     )
 
 

@@ -9,6 +9,9 @@ assignment -> update / birth / prune), rewritten for world coordinates:
 - M-of-N confirmation: the old streak counter dropped by one on every
   predict and rose by one on every update, so it never got past 1 and
   min_hits >= 2 could never confirm a track
+- two-stage association: confirmed tracks pick plots first, then tentative
+  ones. With one global assignment, a tentative track born next to a
+  target could take its plots and replace the confirmed track's ID.
 - track IDs belong to the tracker instance (the old counter was a
   class-level global shared by every tracker)
 """
@@ -161,7 +164,19 @@ class Tracker:
             for j, (z, R) in enumerate(meas):
                 y = z - _H @ tr.x
                 cost[i, j] = float(y @ np.linalg.solve(HPH + R, y))
-        pairs = assign(cost, self.cfg.gate_chi2)
+
+        # Stage 1: confirmed tracks pick first; stage 2: tentative tracks get what is left
+        pairs = []
+        free_plots = list(range(len(meas)))
+        for status in (CONFIRMED, TENTATIVE):
+            rows = [i for i, tr in enumerate(self.tracks) if tr.status == status]
+            if not rows or not free_plots:
+                continue
+            sub = cost[np.ix_(rows, free_plots)]
+            stage = [(rows[r], free_plots[c]) for r, c in assign(sub, self.cfg.gate_chi2)]
+            pairs += stage
+            used = {j for _, j in stage}
+            free_plots = [j for j in free_plots if j not in used]
 
         matched_tracks = set()
         matched_plots = set()

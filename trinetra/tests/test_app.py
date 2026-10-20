@@ -47,10 +47,10 @@ def test_same_seed_same_log(tmp_path):
     assert a != c
 
 
-def test_cli_requires_headless_in_phase_0(capsys):
+def test_cli_rejects_hil_until_phase_3(capsys):
     with pytest.raises(SystemExit):
-        main(["--scenario", str(SMOKE)])
-    assert "--headless" in capsys.readouterr().err
+        main(["--scenario", str(SMOKE), "--hil"])
+    assert "Phase 3" in capsys.readouterr().err
 
 
 def test_cli_writes_log(tmp_path, capsys):

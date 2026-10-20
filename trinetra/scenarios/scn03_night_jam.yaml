@@ -1,0 +1,21 @@
+id: SCN-03-night-jam
+title: "SCN-03  Night recce and attack under jamming"
+briefing: >
+  Mountain post at night. A fixed-wing UAV is expected to fly a
+  reconnaissance pass to the north without closing; hand it off. A
+  quadcopter attack may follow from the south-east under radar jamming.
+  Use the thermal camera to keep custody while the radar is degraded.
+seed: 303
+duration_s: 170
+terrain: mountain
+time_of_day: night
+weather: { fog: 0.05, wind_mps: 8 }
+degradation:
+  - { at_s: 75, sensor: radar, kind: jamming, duration_s: 15 }
+  - { at_s: 110, sensor: ir, kind: noise, duration_s: 10 }
+post: { lat: 34.1526, lon: 77.5771, sensors: [radar, ir] }
+roe: standard-forward-post
+entities:
+  - { id: UAV-FW, class: fixed_wing, hostile: true,  spawn_s: 0,  path: straight,   from_bearing: 300, range_m: 2800, heading_deg: 75, speed_mps: 25, alt_m: 300 }
+  - { id: UAV-02, class: quad,       hostile: true,  spawn_s: 40, path: attack_run, from_bearing: 130, range_m: 3000, speed_mps: 22 }
+  - { id: BIRD-1, class: bird,       hostile: false, spawn_s: 10, path: straight,   from_bearing: 30,  range_m: 1000, heading_deg: 260, speed_mps: 8 }

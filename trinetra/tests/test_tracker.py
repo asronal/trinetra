@@ -90,3 +90,37 @@ def test_assign_respects_gate():
     pairs = sorted(assign(cost, gate=9.21))
     assert len(pairs) == 2 and all(cost[r, c] <= 9.21 for r, c in pairs)
     assert assign(np.full((2, 2), 100.0), gate=9.21) == []
+
+
+def test_tentative_track_cannot_steal_a_confirmed_tracks_plots():
+    """Regression (SCN-01, t=68-72 s): a tentative track born beside a target took its
+    plots in a single global assignment, starved the confirmed track and replaced its ID."""
+    trk = tracker()
+    for k in range(6):
+        trk.update([plot_at(0.0, 1500.0 - 20 * k, "T")], t=float(k))
+    (confirmed,) = trk.confirmed
+    # A stray plot 40 m to the side starts a tentative track there ...
+    trk.update([plot_at(0.0, 1380.0, "T"), plot_at(40.0, 1378.0, None)], t=6.0)
+    # ... and the target's plots then shift 40 m east: still inside the confirmed track's
+    # gate, but cheaper for the loose new tentative track. The confirmed track must keep them.
+    for k in range(7, 15):
+        trk.update([plot_at(40.0, 1500.0 - 20 * k, "T")], t=float(k))
+    assert [t.id for t in trk.confirmed] == [confirmed.id]
+    assert trk.get(confirmed.id).misses == 0
+
+
+def test_scn01_drone_keeps_one_track_id():
+    from pathlib import Path
+    from trinetra.config import Config
+    from trinetra.core.scenario import load_scenario
+    from trinetra.core.session import Session
+    import tempfile
+    scn = Path(__file__).resolve().parents[1] / "scenarios" / "scn01_day_single.yaml"
+    with tempfile.TemporaryDirectory() as d:
+        s = Session(load_scenario(scn), Config(), Path(d) / "log.jsonl", duration_s=130)
+        ids = set()
+        while not s.done:
+            s.step()
+            ids |= {t.id for t in s.tracker.confirmed if t.truth_id == "UAV-01"}
+        s.finish()
+    assert len(ids) == 1

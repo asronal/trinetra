@@ -191,11 +191,12 @@ class EmulatedIR(Sensor):
         return math.exp(-k * range_m / 1000.0)
 
     def _background(self, fog: float) -> np.ndarray:
+        """Sky and ground at sensor resolution (smooth, so no supersampling needed)."""
         key = (self.az_deg, self.el_deg, fog)
         if self._bg_cache is not None and self._bg_cache[0] == key:
             return self._bg_cache[1]
-        cfg, ss = self.cfg, self.cfg.supersample
-        W, H, f = cfg.width * ss, cfg.height * ss, self.f_px * ss
+        cfg = self.cfg
+        W, H, f = cfg.width, cfg.height, self.f_px
         fwd, right, up = self._basis()
         x = (np.arange(W) + 0.5 - W / 2) / f
         y = (H / 2 - (np.arange(H) + 0.5)) / f
@@ -238,7 +239,12 @@ class EmulatedIR(Sensor):
         img[r0:r1, c0:c1][mask] = temp
 
     def render(self, world, t: float = 0.0) -> Tuple[np.ndarray, List[IRTruth]]:
-        """Noise-free scene temperatures at sensor resolution, plus where each entity landed."""
+        """Noise-free scene temperatures at sensor resolution, plus where each entity landed.
+
+        Each entity is drawn into a small supersampled patch cut from the
+        background and area-averaged back, so sub-pixel targets keep their
+        partial coverage without supersampling the whole frame.
+        """
         cfg, ss = self.cfg, self.cfg.supersample
         fog = self._fog_level(t)
         img = self._background(fog).copy()
@@ -256,15 +262,23 @@ class EmulatedIR(Sensor):
             tau = self._transmission(e.slant_range_m, fog)
             body = tau * (self.ambient_c + prof.body_dc) + (1 - tau) * self.ambient_c
             hot = tau * prof.hot_c + (1 - tau) * self.ambient_c
+            truth.append(IRTruth(e.id, e.label, u, v, size_px, e.slant_range_m))
+
+            half = int(math.ceil(size_px / 2)) + 1
+            c0, c1 = max(0, int(u) - half), min(cfg.width, int(u) + half + 1)
+            r0, r1 = max(0, int(v) - half), min(cfg.height, int(v) + half + 1)
+            if c0 >= c1 or r0 >= r1:
+                continue
+            patch = np.repeat(np.repeat(img[r0:r1, c0:c1], ss, axis=0), ss, axis=1)
+            pu, pv = (u - c0) * ss, (v - r0) * ss
             rx = size_px * ss / 2
             ry = rx * SILHOUETTE_ASPECT
             k = math.sqrt(prof.hot_frac)
-            self._splat(img, u * ss, v * ss, rx, ry, body)
-            self._splat(img, u * ss, v * ss, rx * k, ry * k, hot)
-            truth.append(IRTruth(e.id, e.label, u, v, size_px, e.slant_range_m))
+            self._splat(patch, pu, pv, rx, ry, body)
+            self._splat(patch, pu, pv, rx * k, ry * k, hot)
+            img[r0:r1, c0:c1] = patch.reshape(r1 - r0, ss, c1 - c0, ss).mean(axis=(1, 3))
 
-        temps = img.reshape(cfg.height, ss, cfg.width, ss).mean(axis=(1, 3))
-        return gaussian_blur(temps, cfg.blur_sigma_px).astype(np.float32), truth
+        return gaussian_blur(img, cfg.blur_sigma_px).astype(np.float32), truth
 
     # ── Sensor interface ─────────────────────────────────────────
     def read(self, world, t: float) -> Optional[IRFrame]:

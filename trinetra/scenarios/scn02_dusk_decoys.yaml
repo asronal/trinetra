@@ -1,0 +1,20 @@
+id: SCN-02-dusk-decoys
+title: "SCN-02  Fast FPV among decoys, dusk"
+briefing: >
+  Urban post at dusk. A friendly hexacopter is flying a survey line to
+  the west. Birds are active. Intelligence warns of a fast FPV approach
+  from the south. Expect a short radar dropout. Do not engage the friendly.
+seed: 202
+duration_s: 140
+terrain: urban
+time_of_day: dusk
+weather: { fog: 0.15, wind_mps: 5 }
+degradation:
+  - { at_s: 70, sensor: radar, kind: dropout, duration_s: 5 }
+post: { lat: 28.6139, lon: 77.2090, sensors: [radar, ir] }
+roe: standard-forward-post
+entities:
+  - { id: FRND-1, class: hexa, hostile: false, iff: true, spawn_s: 0,  path: straight,   from_bearing: 300, range_m: 1500, heading_deg: 180, speed_mps: 8 }
+  - { id: BIRD-1, class: bird, hostile: false,            spawn_s: 0,  path: straight,   from_bearing: 150, range_m: 900,  heading_deg: 20,  speed_mps: 10 }
+  - { id: BIRD-2, class: bird, hostile: false,            spawn_s: 20, path: straight,   from_bearing: 90,  range_m: 1700, heading_deg: 250, speed_mps: 11 }
+  - { id: FPV-01, class: fpv,  hostile: true,             spawn_s: 50, path: attack_run, from_bearing: 190, range_m: 2600, speed_mps: 32, alt_m: 25 }

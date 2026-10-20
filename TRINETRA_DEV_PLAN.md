@@ -367,9 +367,13 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 - [x] `ai/tracker.py`: world-coordinate tracker on radar plots, M-of-N confirmation. Tracks drop under jamming and come back with a new ID afterwards, so the trainee has to re-acquire.
 - [x] `scoring/roe.py` + `score_run()`: all four rubric metrics, ROE tree from section 6.3, plain-language notes for the AAR ("UAV-01: simulated_hard_kill at 61.0 s … earned 0.50").
 - [x] Event log: `truth_state` at 1 Hz (ROE context and AAR replay), `track_confirm` / `track_drop`; trainee events carry the simulator-resolved `truth_id`.
-- [ ] Trainee console (blocked on the OpenCV vs browser decision, section 13)
+- [x] Trainee console: OpenCV (decided 20 Oct 2026; browser UI can follow in Phase 2). Radar scope, thermal view cued to the selected track with a zoom inset, briefing screen, keyboard/mouse actions, score screen with notes. `core/session.py` runs one training run for both the console and the headless runner.
+- [x] Simulated engagement outcomes: soft kill 70 %, hard kill 90 %, only within 1 km; a kill removes the target and is logged as `neutralised_simulated`.
+- [x] Scenarios SCN-01 (day, single quad), SCN-02 (dusk, FPV among friendly and birds, radar dropout), SCN-03 (night, recce fixed-wing + quad under jamming, IR noise)
+- [x] Tracker fix: two-stage association (confirmed tracks pick plots first); before it, a tentative track born beside a target could take over its plots and change its ID mid-run.
+- [x] Thermal render 382 → 38 ms per frame (background at sensor resolution, supersampled patch per target only)
 - [ ] `sensors/eo.py`: emulated EO camera
-- [ ] Scenarios SCN-01..03
+- [ ] Playtest SCN-01..03 with a teammate and tune difficulty (definition of done for Phase 1)
 
 ---
 
@@ -386,7 +390,7 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 ## 13. Open decisions
 
 - [ ] Confirm the PS wording and category on sih.gov.in
-- [ ] Trainee console: OpenCV window (fast, matches our code) or a browser UI (prettier)
+- [x] Trainee console: OpenCV window for Phase 1 (decided 20 Oct 2026); revisit a browser UI with the AAR dashboard in Phase 2
 - [ ] AAR stack for the MVP: Streamlit now, React later, or React from the start
 - [ ] Telemetry radio for live red-cell ground truth (budget)
 - [ ] Buy the HLK-LD2450 (≈ ₹1,400) now or after the MVP

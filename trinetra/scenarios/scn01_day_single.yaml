@@ -1,0 +1,17 @@
+id: SCN-01-day-single
+title: "SCN-01  Single quad, day"
+briefing: >
+  Rural forward post, clear day. Expect a single small UAV from the
+  north-east and normal bird activity. Detect and classify every contact.
+  Alert the QRT for hostiles beyond 1 km; engage a hostile that closes
+  inside 1 km.
+seed: 101
+duration_s: 150
+terrain: rural
+time_of_day: day
+weather: { fog: 0.0, wind_mps: 3 }
+post: { lat: 26.9124, lon: 75.7873, sensors: [radar, ir] }
+roe: standard-forward-post
+entities:
+  - { id: UAV-01, class: quad, hostile: true,  spawn_s: 5,  path: attack_run, from_bearing: 60,  range_m: 2700, speed_mps: 20 }
+  - { id: BIRD-1, class: bird, hostile: false, spawn_s: 0,  path: straight,   from_bearing: 200, range_m: 1400, heading_deg: 80, speed_mps: 9 }
