@@ -47,8 +47,7 @@ const pending = new Map();            // contact id -> type picked but not yet s
 let hardArmed = { id: null, until: 0 };
 let endArmed = 0;
 let lastMsg = 0, zoomI = 0, view = "camera";
-let irWanted = null, irLoading = false;
-let actionsKey = "", contactsKey = "", scoreShown = false;
+let actionsKey = "", scoreShown = false;
 
 async function post(action) {
   try {
@@ -82,7 +81,7 @@ async function loadMenu() {
 $("start-btn").addEventListener("click", async () => {
   const mode = document.querySelector('input[name="mode"]:checked').value;
   lastStart = { scenario: chosen, mode };
-  pending.clear(); scoreShown = false;
+  pending.clear(); scoreShown = false; alerted.clear();
   await post({ type: "start", ...lastStart });
 });
 
@@ -124,7 +123,8 @@ function onState() {
   setGuide(guidance());
   renderContacts();
   renderActions();
-  renderThermal();
+  renderCounters();
+  renderAlert();
   for (const m of st.messages) if (m.id > lastMsg) { lastMsg = m.id; toast(m.text, m.kind); }
   renderBriefing();
   renderScore();
@@ -134,6 +134,7 @@ function onState() {
 const speedSeg = $("speed-seg");
 function renderTopbar() {
   $("mission-title").textContent = st.scenario.title;
+  $("mission-title").title = st.scenario.title;
   $("mode-chip").textContent = st.mode === "guided" ? "Guided" : "Standard";
   $("clock").textContent = `${mmss(st.t)} / ${mmss(st.duration)}`;
   $("pause-btn").textContent = st.status === "paused" ? "Resume" : "Pause";
@@ -335,24 +336,65 @@ $("actions").addEventListener("click", async (e) => {
   }
 });
 
-// ── Thermal ──
-const thermalImg = $("thermal");
-thermalImg.addEventListener("load", () => { irLoading = false; });
-thermalImg.addEventListener("error", () => { irLoading = false; });
-function renderThermal() {
-  const c = st.camera;
-  $("ir-cap").textContent = `Pointing ${String(Math.round(c.az)).padStart(3, "0")}° ${compass(c.az)}`;
-  if (c.ir_t !== null && c.ir_t !== irWanted && !irLoading) {
-    irWanted = c.ir_t; irLoading = true;
-    thermalImg.src = `/api/thermal.jpg?f=${c.ir_t}`;
-  }
-  const msg = $("thermal-msg");
-  const sel = st.tracks.find((t) => t.id === st.selected);
-  msg.classList.remove("bad");
-  if (c.ir_status === "dropout") { msg.hidden = false; msg.classList.add("bad"); msg.textContent = "Heat camera signal lost"; }
-  else if (sel && sel.range > 1800) { msg.hidden = false; msg.textContent = `Contact ${sel.id} is ${km(sel.range)} away: probably too far for the heat camera yet.`; }
-  else msg.hidden = true;
+// ── Counters and threat alert ──
+let soundOn = true, audioCtx = null;
+const alerted = new Set();
+$("sound-btn").addEventListener("click", () => {
+  soundOn = !soundOn;
+  $("sound-btn").textContent = soundOn ? "Sound on" : "Sound off";
+  $("sound-btn").setAttribute("aria-pressed", String(soundOn));
+});
+function beep() {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    const t0 = audioCtx.currentTime;
+    for (let i = 0; i < 2; i++) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "square"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, t0 + i * 0.22);
+      g.gain.exponentialRampToValueAtTime(0.08, t0 + i * 0.22 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.22 + 0.16);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0 + i * 0.22); o.stop(t0 + i * 0.22 + 0.18);
+    }
+  } catch { /* audio is a nice-to-have */ }
 }
+function renderCounters() {
+  const T = st.tracks;
+  const n = (s) => T.filter((t) => t.status === s).length;
+  const chip = (cls, v, label) => `<span class="chip ${v ? cls : ""}"><b>${v}</b> ${label}</span>`;
+  $("counters").innerHTML = chip("", T.length, "on radar") + chip("warn", n("unknown"), "not identified") +
+    chip("bad", n("hostile"), "hostile") + chip("", n("down"), "down");
+}
+// A threat is anything not cleared as harmless that is inside the engage zone and closing
+function threats() {
+  if (!["running", "paused"].includes(st.status)) return [];
+  return st.tracks.filter((t) => (t.status === "unknown" || t.status === "hostile") &&
+    t.range <= st.rules.engage_m && t.closing > st.rules.approach_mps &&
+    !t.actions.some((a) => a.includes("kill")));
+}
+function renderAlert() {
+  const list = threats();
+  const el = $("alert");
+  el.hidden = !list.length;
+  if (!list.length) return;
+  const t = list.sort((a, b) => a.range - b.range)[0];
+  el.textContent = `⚠ CONTACT ${t.id} INSIDE 1 KM AND CLOSING · ${km(t.range)} ${t.direction.toUpperCase()}` +
+    (list.length > 1 ? ` · +${list.length - 1} MORE` : "");
+  for (const x of list) if (!alerted.has(x.id)) { alerted.add(x.id); beep(); }
+}
+
+// ── Day / thermal ──
+let sensor = "day";
+$("sensor").addEventListener("click", (e) => {
+  const s = e.target.dataset.sensor;
+  if (!s) return;
+  sensor = s;
+  world.setSensor(s);
+  $("gl").classList.toggle("thermal", s === "thermal" && view === "camera");
+  [...$("sensor").children].forEach((b) => b.classList.toggle("on", b.dataset.sensor === s));
+});
 
 // ── Toasts ──
 function toast(text, kind = "info") {
@@ -402,6 +444,60 @@ function renderScore() {
   $("score-notes").innerHTML = s.notes.length ? s.notes.map((n) => `<li>${plainNote(n)}</li>`).join("")
     : "<li>Nothing. Every hostile was spotted, identified and handled under the rules.</li>";
   $("score-log").textContent = `Full record of this mission: ${st.log}`;
+  renderAAR();
+}
+
+// ── After-action timeline ──
+const GRADE = { good: "var(--green)", partial: "var(--amber)", bad: "var(--red)", info: "var(--ink)" };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+async function renderAAR() {
+  $("aar-timeline").innerHTML = "";
+  $("aar-stats").innerHTML = "";
+  let tl;
+  try { tl = await (await fetch("/api/aar")).json(); } catch { return; }
+  if (!tl) return;
+  const rows = [...tl.rows].sort((a, b) => (b.hostile - a.hostile) || a.start - b.start);
+  if (tl.clutter.length) rows.push({ id: "Clutter", name: "radar false alarms", hostile: false, start: 0, end: tl.duration, marks: tl.clutter, clutter: true });
+  const hostiles = tl.rows.filter((r) => r.hostile);
+  const stopped = hostiles.filter((r) => r.end_reason === "neutralised_simulated").length;
+  const reached = hostiles.filter((r) => r.end_reason === "arrived").length;
+  const marks = rows.flatMap((r) => r.marks);
+  const wrong = marks.filter((m) => m.grade === "bad").length;
+  const ttds = hostiles.map((r) => r.time_to_detect_s).filter((v) => v != null);
+  const stat = (v, label, cls = "") => `<div class="stat ${cls}"><b>${v}</b><span>${label}</span></div>`;
+  $("aar-stats").innerHTML =
+    stat(`${stopped}/${hostiles.length}`, "hostiles stopped", stopped === hostiles.length && hostiles.length ? "good" : "") +
+    stat(reached, "reached your post", reached ? "bad" : "good") +
+    stat(ttds.length ? `${(ttds.reduce((a, b) => a + b, 0) / ttds.length).toFixed(1)} s` : "–", "average time to spot") +
+    stat(wrong, "wrong decisions", wrong ? "bad" : "good");
+
+  const W = 980, LW = 190, RH = 38, TOP = 30, H = TOP + rows.length * RH + 8;
+  const dur = Math.max(tl.duration, 1), X = (t) => LW + (t / dur) * (W - LW - 110);
+  const step = dur > 150 ? 30 : 15;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mission timeline">`;
+  for (let t = 0; t <= dur + 0.01; t += step) {
+    svg += `<line x1="${X(t)}" x2="${X(t)}" y1="${TOP - 6}" y2="${H - 6}" stroke="var(--grid)"/>` +
+      `<text x="${X(t)}" y="${TOP - 12}" fill="var(--muted)" font-size="11" text-anchor="middle">${mmss(t)}</text>`;
+  }
+  rows.forEach((r, i) => {
+    const y = TOP + i * RH, mid = y + RH / 2;
+    const col = r.clutter ? "var(--muted)" : r.hostile ? "var(--red)" : "var(--blue)";
+    svg += `<text x="12" y="${mid - 3}" fill="var(--ink)" font-size="13" font-weight="600">${esc(r.id)}</text>` +
+      `<text x="12" y="${mid + 12}" fill="var(--muted)" font-size="11">${esc(r.name)}${r.hostile ? " · hostile" : ""}</text>` +
+      `<rect x="${X(r.start)}" y="${mid - 4}" width="${Math.max(2, X(r.end) - X(r.start))}" height="8" rx="4" fill="${col}" opacity="0.35"/>`;
+    if (r.detectable != null) svg += `<line x1="${X(r.detectable)}" x2="${X(r.detectable)}" y1="${mid - 11}" y2="${mid + 11}" stroke="var(--amber)" stroke-width="2"><title>Became detectable at ${r.detectable.toFixed(1)} s</title></line>`;
+    if (r.end_reason === "neutralised_simulated") svg += `<text x="${X(r.end) + 6}" y="${mid + 4}" fill="var(--green)" font-size="11" font-weight="700">DOWN</text>`;
+    if (r.end_reason === "arrived") svg += `<text x="${X(r.end) + 6}" y="${mid + 4}" fill="var(--red)" font-size="11" font-weight="700">REACHED POST</text>`;
+    for (const m of r.marks) {
+      const x = X(m.t), c = GRADE[m.grade];
+      const tip = `<title>${mmss(m.t)}  ${esc(m.text)}</title>`;
+      if (m.kind === "select") svg += `<path d="M${x} ${mid - 5}l5 5-5 5-5-5z" fill="${c}">${tip}</path>`;
+      else if (m.kind === "classify") svg += `<circle cx="${x}" cy="${mid}" r="5.5" fill="${c}" stroke="var(--bg)" stroke-width="1.5">${tip}</circle>`;
+      else svg += `<path d="M${x} ${mid - 7}l6.5 11h-13z" fill="${c}" stroke="var(--bg)" stroke-width="1.5">${tip}</path>`;
+    }
+  });
+  svg += "</svg>";
+  $("aar-timeline").innerHTML = svg;
 }
 $("score-again").addEventListener("click", async () => {
   if (!lastStart) {
@@ -409,7 +505,7 @@ $("score-again").addEventListener("click", async () => {
     const s = scenarios.find((x) => x.id === st.scenario.id);
     lastStart = { scenario: s ? s.file : scenarios[0].file, mode: st.mode };
   }
-  pending.clear(); scoreShown = false;
+  pending.clear(); scoreShown = false; alerted.clear();
   post({ type: "start", ...lastStart });
 });
 $("score-menu").addEventListener("click", () => { scoreShown = false; post({ type: "menu" }); });
@@ -428,7 +524,8 @@ document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () 
   view = t.dataset.view;
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
   world.setMode(view);
-  zoomBox.hidden = view !== "camera";
+  $("cam-controls").hidden = view !== "camera";
+  $("gl").classList.toggle("thermal", sensor === "thermal" && view === "camera");
   $("stage-help").textContent = view === "camera" ? "Drag to look around · scroll to zoom"
     : "Drag to turn the map · scroll to zoom · aircraft are drawn larger than life so you can see them";
 }));
@@ -516,6 +613,94 @@ function label(ctx, text, x, y, color) {
   ctx.textBaseline = "middle";
   ctx.fillText(text, x + 5, y);
 }
+// ── Camera HUD, styled after a surveillance camera feed ──
+const HUD = "rgba(232,240,236,0.86)", HUD_DIM = "rgba(232,240,236,0.45)";
+function tickStep(span) {
+  for (const s of [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30]) if (span / s <= 14) return s;
+  return 45;
+}
+function drawHud(ctx, w, h) {
+  const az = world.look.az, el = world.look.el;
+  const vfov = world.eo.fov, hfov = 2 * Math.atan(Math.tan(vfov * Math.PI / 360) * (w / h)) * 180 / Math.PI;
+  const thermal = sensor === "thermal";
+  ctx.save();
+  ctx.font = "12px Cascadia Mono, Consolas, monospace";
+  ctx.textBaseline = "middle";
+
+  // corner frame of the feed
+  ctx.strokeStyle = HUD_DIM; ctx.lineWidth = 2;
+  const m = 14, L = 28;
+  for (const [x, y, sx, sy] of [[m, m, 1, 1], [w - m, m, -1, 1], [m, h - m, 1, -1], [w - m, h - m, -1, -1]]) {
+    ctx.beginPath(); ctx.moveTo(x, y + sy * L); ctx.lineTo(x, y); ctx.lineTo(x + sx * L, y); ctx.stroke();
+  }
+
+  // compass tape: ticks sit exactly over the directions they name
+  const tapeW = Math.min(w - 620, 640), tx0 = (w - tapeW) / 2, ty = 26;
+  if (tapeW > 160) {
+    const pxPerDeg = w / hfov, step = tickStep(tapeW / pxPerDeg);
+    ctx.fillStyle = "rgba(6,10,12,0.45)"; ctx.fillRect(tx0, ty - 14, tapeW, 30);
+    ctx.save(); ctx.beginPath(); ctx.rect(tx0, ty - 14, tapeW, 30); ctx.clip();
+    const half = tapeW / 2 / pxPerDeg;
+    for (let d = Math.ceil((az - half) / step) * step; d <= az + half; d += step) {
+      const x = w / 2 + (d - az) * pxPerDeg, dd = ((Math.round(d / step) * step) % 360 + 360) % 360;
+      const major = Math.abs((d / (step * 2)) - Math.round(d / (step * 2))) < 1e-6;
+      ctx.strokeStyle = HUD; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, ty + 16); ctx.lineTo(x, ty + (major ? 4 : 9)); ctx.stroke();
+      if (major) {
+        const card = { 0: "N", 90: "E", 180: "S", 270: "W" }[Math.round(dd * 10) / 10];
+        ctx.fillStyle = card ? "#ffd27a" : HUD; ctx.textAlign = "center";
+        ctx.fillText(card || (step < 1 ? dd.toFixed(1) : String(Math.round(dd)).padStart(3, "0")), x, ty - 4);
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle = "#ffd27a";
+    ctx.beginPath(); ctx.moveTo(w / 2 - 6, ty + 17); ctx.lineTo(w / 2 + 6, ty + 17); ctx.lineTo(w / 2, ty + 10); ctx.fill();
+  }
+
+  // elevation scale on the right
+  const ex = w - 30, pxPerDegV = h / vfov, estep = tickStep(260 / pxPerDegV);
+  ctx.strokeStyle = HUD; ctx.fillStyle = HUD; ctx.textAlign = "right";
+  for (let d = Math.ceil((el - 130 / pxPerDegV) / estep) * estep; d <= el + 130 / pxPerDegV; d += estep) {
+    const y = h / 2 - (d - el) * pxPerDegV;
+    const major = Math.abs(d / (estep * 2) - Math.round(d / (estep * 2))) < 1e-6;
+    ctx.beginPath(); ctx.moveTo(ex, y); ctx.lineTo(ex - (major ? 12 : 6), y); ctx.stroke();
+    if (major) ctx.fillText(`${d > 0 ? "+" : ""}${estep < 1 ? d.toFixed(1) : Math.round(d)}`, ex - 16, y);
+  }
+  ctx.fillStyle = "#ffd27a";
+  ctx.beginPath(); ctx.moveTo(ex + 2, h / 2); ctx.lineTo(ex + 10, h / 2 - 5); ctx.lineTo(ex + 10, h / 2 + 5); ctx.fill();
+
+  // reticle with an open centre, so it never hides a small target
+  ctx.strokeStyle = HUD; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (const [a, b] of [[-52, -30], [30, 52]]) { ctx.moveTo(w / 2 + a, h / 2); ctx.lineTo(w / 2 + b, h / 2); ctx.moveTo(w / 2, h / 2 + a); ctx.lineTo(w / 2, h / 2 + b); }
+  ctx.stroke();
+
+  // live indicator and mission clock, top right
+  ctx.textAlign = "right";
+  const blink = Math.floor(performance.now() / 600) % 2 === 0;
+  ctx.fillStyle = blink ? "#ff4a3d" : "rgba(255,74,61,0.35)";
+  ctx.beginPath(); ctx.arc(w - 112, 30, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = HUD;
+  ctx.fillText(`LIVE  T+${mmss(st.t)}`, w - 24, 30);
+
+  // readout panel, bottom left
+  const sel = st.tracks.find((t) => t.id === st.selected);
+  const lines = [
+    `${thermal ? "THERMAL  WHITE-HOT" : "DAY TV"}   FOV ${vfov < 2 ? vfov.toFixed(2) : vfov.toFixed(1)}°  ${ZOOMS[zoomI].label.toUpperCase()}`,
+    `AZ ${az.toFixed(1).padStart(5, "0")}° ${compass(az).toUpperCase()}   EL ${el >= 0 ? "+" : ""}${el.toFixed(1)}°`,
+    sel ? `TRACK  C${sel.id}  ${st.camera.locked ? "LOCKED" : "RADAR CUE"}` : "TRACK  NONE",
+    sel ? `RANGE  ${(sel.range / 1000).toFixed(2)} KM   ${sel.closing > 1 ? `CLOSING ${Math.round(sel.closing)} M/S` : sel.closing < -1 ? "OPENING" : "CROSSING"}` : "",
+  ].filter(Boolean);
+  const bh = lines.length * 18 + 14;
+  ctx.fillStyle = "rgba(6,10,12,0.5)"; ctx.fillRect(16, h - bh - 16, 330, bh);
+  ctx.textAlign = "left";
+  lines.forEach((ln, i) => {
+    ctx.fillStyle = i === 2 && sel && st.camera.locked ? "#7dffb0" : HUD;
+    ctx.fillText(ln, 26, h - bh - 16 + 16 + i * 18);
+  });
+  ctx.restore();
+}
+
 function drawOverlay() {
   const dpr = overlay.width / Math.max(1, stage.clientWidth);
   const w = stage.clientWidth, h = stage.clientHeight;
@@ -541,21 +726,14 @@ function drawOverlay() {
       ctx.textAlign = "left";
       return;
     }
-    // reticle
-    ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 1;
-    ctx.beginPath();
-    // open centre, so the reticle never hides a small target
-    for (const [a, b] of [[-46, -30], [30, 46]]) { ctx.moveTo(w / 2 + a, h / 2); ctx.lineTo(w / 2 + b, h / 2); ctx.moveTo(w / 2, h / 2 + a); ctx.lineTo(w / 2, h / 2 + b); }
-    ctx.stroke();
-    // heading readout
-    const az = world.look.az, el = world.look.el;
-    ctx.font = "600 13px Segoe UI, system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fillText(`Looking ${String(Math.round(az)).padStart(3, "0")}° ${compass(az)} · ${el >= 0 ? "up" : "down"} ${Math.abs(el).toFixed(1)}° · zoom ${ZOOMS[zoomI].label}`, w / 2, 22);
-    ctx.textAlign = "left";
+    drawHud(ctx, w, h);
+    const az = world.look.az;
     // contacts (radar cues, height assumed)
     for (const t of st.tracks) {
-      const p = world.project(t.e, t.n, st.camera.assumed_alt_m, w, h);
       const sel = t.id === st.selected;
+      const locked = sel && st.camera.locked;
+      // A locked target is wherever the camera points: the centre of the view
+      const p = locked ? { x: w / 2, y: h / 2 } : world.project(t.e, t.n, st.camera.assumed_alt_m, w, h);
       const color = css(STATUS_VAR[t.status]);
       if (!p || p.x < -20 || p.x > w + 20 || p.y < -20 || p.y > h + 20) {
         if (sel) {               // off screen: point the way
@@ -605,8 +783,10 @@ function drawOverlay() {
         label(ctx, `${en.id} · ${TYPE_NAME[en.label]}`, p.x + 10, p.y + 14, en.hostile ? css("--red") : css("--blue"));
       }
     }
-    const lr = world.project(0, st.rules.engage_m, 0, w, h);
-    if (lr) label(ctx, "1 km engage zone", lr.x + 6, lr.y, css("--red"));
+    // label the engage ring on the side nearest the viewer, away from most traffic
+    const oa = world.orbit.az * Math.PI / 180;
+    const lr = world.project(Math.sin(oa) * st.rules.engage_m, Math.cos(oa) * st.rules.engage_m, 0, w, h);
+    if (lr) label(ctx, "1 km engage zone", lr.x + 6, lr.y + 12, css("--red"));
   }
 }
 

@@ -381,6 +381,8 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
   - Plain words on screen: Contact N, km and compass direction, "coming closer at 21 m/s"; buttons for type, threat and response; kill buttons disabled with a reason when out of range.
   - Playtest fixes: same order on the same track refused for 3 s; downed targets marked Down and refuse orders; repeated mistakes collapse into one score note.
   - The page never receives the true identity of contacts unless "Show everything" is on.
+- [x] UI pass for judges (20 Oct 2026): patchwork farmland, villages, horizon hills, clouds, sun glow, nav lights at night; **Day / Thermal switch** on the camera (3D white-hot rendering with hot-motor glow); surveillance-camera HUD (compass tape, elevation scale, track/range readout, LIVE); threat banner and alarm inside 1 km; contact counters; MIL-style radar symbols with trails.
+- [x] **After-action review per mission** (`scoring/aar.py`, `/api/aar`): stats (hostiles stopped, reached the post, average time to spot, wrong decisions) and a timeline of every decision graded right / partly / wrong. Covers the per-run half of the brief's AAR outcome; progress across sessions is still Phase 2.
 - [ ] `sensors/eo.py`: Python EO sensor model (for classifier training data; the trainee's EO view is the 3D camera above)
 - [ ] Playtest SCN-01..03 in the browser trainer with a teammate and tune difficulty (definition of done for Phase 1)
 

@@ -11,6 +11,7 @@ internet is needed (three.js is vendored in trinetra/web/vendor).
   GET  /api/scenarios     scenario list for the start screen
   GET  /api/state         one state snapshot (JSON)
   GET  /api/stream        state ~10 times a second (Server-Sent Events)
+  GET  /api/aar           after-action timeline of the finished mission (null while running)
   GET  /api/thermal.jpg   latest thermal camera frame
   POST /api/action        trainee and session actions (JSON)
 """
@@ -74,6 +75,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(list_scenarios())
         elif route == "/api/state":
             self._json(self.runner.state())
+        elif route == "/api/aar":
+            self._json(self.runner.aar())
         elif route == "/api/thermal.jpg":
             jpg = self.runner.thermal_jpeg()
             if jpg:

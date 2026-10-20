@@ -72,3 +72,20 @@ def test_repeated_wrong_orders_collapse_into_one_note():
          "action": "simulated_soft_kill"} for i in range(18)]
     notes = [n for n in score_run(events).notes if "soft_kill on bird" in n]
     assert notes == ["BIRD-1: simulated_soft_kill on bird x18 (95.0-100.1 s)"]
+
+
+def test_aar_timeline_grades_each_decision():
+    from trinetra.scoring.aar import timeline
+    tl = timeline(read_events(HAND))
+    rows = {r["id"]: r for r in tl["rows"]}
+    assert tl["duration"] == 90.0 and set(rows) == {"UAV-01", "UAV-02", "BIRD-1"}
+    uav = rows["UAV-01"]
+    assert uav["detectable"] == 3.0 and uav["time_to_detect_s"] == 3.0
+    grades = [(m["kind"], m["grade"]) for m in uav["marks"]]
+    # select, classify right, alert far (right), hard kill before soft (partly), soft kill (right), hard after soft (right)
+    assert grades == [("select", "info"), ("classify", "good"), ("respond", "good"),
+                      ("respond", "partial"), ("respond", "good"), ("respond", "good")]
+    bird = rows["BIRD-1"]
+    assert [m["grade"] for m in bird["marks"] if m["kind"] == "classify"] == ["bad"]
+    assert "it was a bird, not hostile" in bird["marks"][-1]["text"]
+    assert rows["UAV-02"]["marks"][-1]["grade"] == "partial"           # right threat, wrong type

@@ -34,13 +34,15 @@
 <section id="app" class="screen app" hidden>
   <header class="topbar">
     <span class="mark">TRINETRA</span>
-    <span id="mission-title" class="mission"></span>
+    <span id="mission-title" class="mission" title=""></span>
     <span id="mode-chip" class="chip"></span>
     <span id="status-chips" class="status-chips"></span>
     <span class="spacer"></span>
+    <span id="counters" class="counters" aria-label="Contact summary"></span>
     <span id="clock" class="clock">0:00</span>
     <div class="seg" id="speed-seg" role="group" aria-label="Speed"></div>
     <button id="pause-btn" class="btn">Pause</button>
+    <button id="sound-btn" class="btn ghost" aria-pressed="true" title="Alarm sound when a threat comes inside 1 km">Sound on</button>
     <label class="switch" title="Shows the real identity of everything in the air. For instructors and demos.">
       <input type="checkbox" id="instructor"> Show everything
     </label>
@@ -61,7 +63,14 @@
           <button class="tab active" data-view="camera" role="tab">Camera at the post</button>
           <button class="tab" data-view="overview" role="tab">Overview map</button>
         </div>
-        <div class="zoom" id="zoom" role="group" aria-label="Camera zoom"></div>
+        <div class="cam-controls" id="cam-controls">
+          <div class="sensor" id="sensor" role="group" aria-label="Camera sensor">
+            <button data-sensor="day" class="on">Day camera</button>
+            <button data-sensor="thermal">Thermal</button>
+          </div>
+          <div class="zoom" id="zoom" role="group" aria-label="Camera zoom"></div>
+        </div>
+        <div class="alert" id="alert" role="alert" hidden></div>
         <div class="stage-help" id="stage-help">Drag to look around · scroll to zoom</div>
         <div class="toasts" id="toasts" aria-live="polite"></div>
       </div>
@@ -73,20 +82,12 @@
         <div class="panel-h"><h2>Radar</h2><span class="panel-note">Click a contact to select it</span></div>
         <canvas id="radar" class="radar"></canvas>
         <div class="legend">
-          <span><i class="dot amber"></i>Not identified</span>
-          <span><i class="dot red"></i>Hostile</span>
-          <span><i class="dot blue"></i>Not hostile</span>
-          <span><i class="dot grey"></i>Down</span>
+          <span><svg viewBox="-6 -6 12 12"><g fill="var(--amber)"><circle cx="-2.4" cy="0" r="2.8"/><circle cx="2.4" cy="0" r="2.8"/><circle cx="0" cy="-2.4" r="2.8"/><circle cx="0" cy="2.4" r="2.8"/></g></svg>Not identified</span>
+          <span><svg viewBox="-6 -6 12 12"><path d="M0-5.5L5.5 0 0 5.5-5.5 0z" fill="var(--red)"/></svg>Hostile</span>
+          <span><svg viewBox="-6 -6 12 12"><circle r="4.8" fill="var(--blue)"/></svg>Not hostile</span>
+          <span><svg viewBox="-6 -6 12 12"><path d="M-4-4L4 4M4-4L-4 4" stroke="var(--muted)" stroke-width="2"/></svg>Down</span>
         </div>
-      </div>
-      <div class="panel">
-        <div class="panel-h"><h2>Heat camera</h2><span class="panel-note" id="ir-cap"></span></div>
-        <div class="thermal">
-          <img id="thermal" alt="Heat camera picture">
-          <div class="xh" aria-hidden="true"></div>
-          <div id="thermal-msg" class="thermal-msg" hidden></div>
-        </div>
-        <p class="panel-foot">Shows warmth, so it works at night and through jamming. Drones show as small bright dots.</p>
+        <p class="panel-foot">Thermal: switch the main camera to <b>Thermal</b> to see heat. It works at night and is not affected by radar jamming.</p>
       </div>
       <div class="panel grow">
         <div class="panel-h"><h2>Contacts</h2><span class="panel-note" id="contacts-count"></span></div>
@@ -126,10 +127,20 @@
 
 <!-- ── Score ── -->
 <div id="score" class="modal" hidden>
-  <div class="modal-card">
-    <span class="eyebrow">Mission complete</span>
-    <div class="score-top"><span id="score-total" class="score-big"></span><span class="score-of">out of 100</span></div>
+  <div class="modal-card wide">
+    <span class="eyebrow">Mission complete · after-action review</span>
+    <div class="score-head">
+      <div class="score-top"><span id="score-total" class="score-big"></span><span class="score-of">out of 100</span></div>
+      <div id="aar-stats" class="aar-stats"></div>
+    </div>
     <div id="score-bars" class="bars"></div>
+    <h3>Mission timeline</h3>
+    <div class="aar-wrap"><div id="aar-timeline" class="aar"></div></div>
+    <div class="aar-legend">
+      <span><i class="mk sel"></i>Selected</span><span><i class="mk cls good"></i>Identified</span><span><i class="mk rsp good"></i>Responded</span>
+      <span><i class="sw good"></i>Right</span><span><i class="sw partial"></i>Partly right</span><span><i class="sw bad"></i>Wrong</span>
+      <span><i class="tick"></i>Became detectable</span>
+    </div>
     <h3>What to improve</h3>
     <ul id="score-notes" class="notes"></ul>
     <p class="fine" id="score-log"></p>

@@ -10,11 +10,11 @@ The full plan, decisions and progress are in [TRINETRA_DEV_PLAN.md](TRINETRA_DEV
 
 | Works now | Next |
 |---|---|
-| Browser trainer with 3D day camera, overview map, radar, heat camera, guided steps, score screen | Playtest with a teammate and tune difficulty |
-| 3 missions (day / dusk / night) plus a smoke test | Swarms and randomly generated missions |
-| Emulated radar (clutter, jamming, dropout) and thermal camera (fog, noise, sub-pixel targets) | After-action dashboard across sessions, adaptive difficulty |
-| Radar tracker, rules-of-engagement scoring with plain-language feedback | Drone/bird classifier (needs Vishal's training data) |
-| Event log of every run; 103 automated tests | Live sensors from the Pi and the red-cell drone (Phase 3) |
+| Browser trainer: 3D camera at the post with **Day / Thermal** switch and a camera HUD, overview map, radar with military-style symbols, guided steps | Playtest with a teammate and tune difficulty |
+| Threat alert (banner and alarm) when something unidentified or hostile closes inside 1 km | Swarms and randomly generated missions |
+| After-action review per mission: score, stats and a timeline of every decision, graded | Progress across sessions, adaptive difficulty |
+| 3 missions (day / dusk / night) plus a smoke test; emulated radar and thermal sensor models | Drone/bird classifier (needs Vishal's training data) |
+| Radar tracker, rules-of-engagement scoring; event log of every run; 104 automated tests | Live sensors from the Pi and the red-cell drone (Phase 3) |
 
 ## Setup (Windows, PowerShell)
 
@@ -49,7 +49,9 @@ Pick a mission, choose **Guided** the first time, and follow the green instructi
 | Hostile, inside 1 km and coming closer | Soft kill; Hard kill only if the soft kill fails |
 | Hostile, inside 1 km, not coming closer | Hand over |
 
-Other controls: **Camera at the post** / **Overview map** switch views (drag to look or turn, scroll to zoom); **Show everything** reveals what each contact really is, for instructors and demos; **1× 2× 4×** speeds the mission up; **Space** pauses. The score screen explains what to improve, and the full record is saved under `output/trinetra/`.
+Other controls: **Camera at the post** / **Overview map** switch views (drag to look or turn, scroll to zoom); **Day camera** / **Thermal** switch what the camera sees (thermal works at night and is not affected by radar jamming); **Show everything** reveals what each contact really is, for instructors and demos; **1× 2× 4×** speeds the mission up; **Space** pauses; **Sound** turns the threat alarm on or off.
+
+After the mission, the **after-action review** shows the score, how many hostiles were stopped or reached the post, the average time to spot, and a timeline of every decision, coloured right, partly right or wrong. The full record is saved under `output/trinetra/`.
 
 | Mission | What it trains |
 |---|---|
@@ -139,7 +141,7 @@ CI runs the same tests plus the smoke mission on every push (`.github/workflows/
 | `trinetra/sensors/radar.py` | Emulated radar; plots share the LD2450 radar's fields for the later live-sensor path |
 | `trinetra/sensors/ir.py` | Emulated thermal camera; auto-contrast and palettes ported from SkyNetics |
 | `trinetra/ai/tracker.py` | Radar tracker: Kalman filter, Hungarian assignment, M-of-N confirmation |
-| `trinetra/scoring/roe.py`, `rubric.py` | Rules-of-engagement tree; run score and plain-language notes |
+| `trinetra/scoring/roe.py`, `rubric.py`, `aar.py` | Rules-of-engagement tree; run score and plain-language notes; after-action timeline |
 | `trinetra/server/` | Local web server and the real-time simulation runner |
 | `trinetra/web/` | Browser trainer: 3D day camera and overview (three.js r160, vendored), radar, heat camera, guided actions |
 | `trinetra/console/` | Older OpenCV console (`--opencv`) |

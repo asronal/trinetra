@@ -19,7 +19,9 @@ import cv2
 
 from ..config import Config
 from ..core.catalog import CLASSES, RESPONSE_ACTIONS
+from ..core.events import read_events
 from ..core.scenario import load_scenario
+from ..scoring.aar import timeline
 from ..core.session import EFFECT_RANGE_M, ActionError, Session
 from ..scoring.roe import get_roe
 from ..sensors.ir import CAMERA_HEIGHT_M
@@ -294,6 +296,14 @@ class SimRunner:
             s.ir.point(s.ir.az_deg + daz, s.ir.el_deg + del_)
 
     # ── Views ─────────────────────────────────────────────────────
+    def aar(self) -> Optional[dict]:
+        """After-action timeline of the finished mission, or None while one is running."""
+        with self.lock:
+            s = self.session
+            if s is None or not s.finished:
+                return None
+            return timeline(read_events(s.log_path))
+
     def thermal_jpeg(self) -> Optional[bytes]:
         with self.lock:
             s = self.session
