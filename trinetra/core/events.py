@@ -20,14 +20,18 @@ SCHEMA: Dict[str, Tuple[str, ...]] = {
     "run_end":              ("duration_s",),
     "truth_spawn":          ("truth_id", "label", "hostile"),
     "truth_despawn":        ("truth_id", "reason"),
+    "truth_state":          ("truth_id", "east_m", "north_m", "alt_m", "range_m", "bearing_deg", "radial_speed_mps"),
     "truth_enter_coverage": ("truth_id", "sensor"),
     "truth_exit_coverage":  ("truth_id", "sensor"),
     "degradation_start":    ("sensor", "kind"),
     "degradation_end":      ("sensor", "kind"),
     "sensor_plot":          ("sensor", "range_m", "bearing_deg", "radial_speed_mps", "truth_id"),
+    "track_confirm":        ("track_id", "truth_id"),
+    "track_drop":           ("track_id",),
+    # truth_id on trainee events is resolved by the simulator (None = clutter track)
     "trainee_select":       ("track_id", "truth_id"),
-    "trainee_classify":     ("track_id", "label", "hostile"),
-    "trainee_respond":      ("track_id", "action"),
+    "trainee_classify":     ("track_id", "truth_id", "label", "hostile"),
+    "trainee_respond":      ("track_id", "truth_id", "action"),
     "ai_assessment":        ("track_id", "label", "conf"),
 }
 

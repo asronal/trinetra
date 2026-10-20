@@ -89,6 +89,20 @@ The rescue-drone code lives in its own repo (`SkyNetics-RAS-drone`, locally `C:\
 | `pipeline/detection_pipeline.py` → `DetectionPipeline`, `FrameData` | Per-frame orchestration | **Simulation tick loop** | Driven by the scenario clock, not the sensor rate |
 | `main.py` (inference thread + 30 fps display loop, `--demo`) | Decoupled threads, synthetic mode | App entry point | Add `--scenario`, `--hil`, `--difficulty` |
 
+### 3.1.1 Port verdicts (modules reviewed 20 Oct 2026)
+
+| Module | Verdict | Reason |
+|---|---|---|
+| `ThermalCamera._to_visual` (percentile AGC + EMA) | **Ported** → `sensors/ir.py` `PercentileAGC` | Sound. Dropped the side effect of writing limits into the global config. |
+| `build_rescue_colormap()` | **Ported** as the `rescue` palette | White-hot, black-hot and ironbow added; white-hot is the default for drones against sky. |
+| `HumanTracker` / `_Track` | **Rewritten** → `ai/tracker.py` | Streak bug (section 10, item 3a); image-box IoU replaced by world-coordinate Mahalanobis gating; IDs per tracker instead of a class-level global. |
+| `_assign` (Hungarian + greedy fallback) | **Ported** (pattern) | Correct. |
+| `_nms`, `_iou_matrix` | Port in Phase 2 with the classifier | Correct and vectorised. |
+| `YOLODetector` | Port in Phase 2, with a fix | Letterboxing is right, but it reads only class 0 (`pred[:, 4]`); multi-class needs an argmax over `pred[:, 4:]`. Drop the Pi-specific subprocess import check. |
+| `AnomalyDetector` | Rewrite in Phase 2 | Rejects anything above 45 °C, which removes drone motors (45–60 °C); human-shape filter does not fit drones. |
+| `SensorFusion` | Rewrite in Phase 2 | Image IoU across different cameras (item 4). |
+| `OSDRenderer`, `RescueDisplay` | Decide with the console choice | Not reviewed yet. |
+
 ### 3.2 Hardware roles (all optional)
 
 We currently own the Pi 4, MLX90640, Pi Camera 3, BotWing F722 and the analog VTX. **We do not yet have the HLK-LD2450 radar** (≈ ₹1,400).
@@ -319,6 +333,7 @@ These came from a review of the version in this repo. Your latest code may alrea
 1. **LD2450 coordinate decoding:** the protocol uses sign-magnitude values, and the parser may read them as two's-complement. Verify against raw bytes before trusting `RadarTarget` positions.
 2. **Two inconsistent thermal thresholds** (`AnomalyDetector` vs `ThermalIsolator`): use one shared implementation.
 3. **Tracker confirms after 1 hit** at a 0.10 YOLO confidence threshold, so false tracks inflate counts. Use `min_hits` 2–3.
+   - 3a. **Raising `min_hits` alone does not work** (found 20 Oct 2026): `_Track.predict()` decrements `streak` every frame and `update()` increments it, so a track matched every frame stays at `streak = 1`. With `min_hits >= 2`, no track confirms after the first frames. Count hits within a window instead (TRINETRA's tracker uses M-of-N). Worth fixing in the rescue drone too.
 4. **No cross-sensor registration** in fusion, which used image IoU across different cameras. Fuse in bearing/range (section 4).
 5. **Recording FPS mismatch**: the writer FPS is not the render FPS, so recordings play in slow motion.
 6. **Radar scope** draws targets relative to the sweep, not at their real bearing.
@@ -345,6 +360,16 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 - Time to detect: selecting a hostile before it enters coverage counts as 0 s. Hostiles that never enter coverage are not scored.
 - Detection time targets get *more* lenient at harder levels (`DETECT_TARGETS_S` in `scoring/rubric.py`), so scores stay comparable as difficulty rises. Instructors can tune them.
 - The event log rejects unknown response actions, so only the simulated actions in `core/catalog.py` can ever be recorded.
+
+**Phase 1 progress** (non-console parts, 20 Oct 2026; 72 tests passing):
+
+- [x] `sensors/ir.py`: emulated LWIR (sky/ground model, per-class thermal signatures, sub-pixel targets, fog, noise, dropout), ported AGC + palettes, plus detail enhancement so small drones stay visible over hot ground. Each frame also reports where each entity landed: free labels for classifier training.
+- [x] `ai/tracker.py`: world-coordinate tracker on radar plots, M-of-N confirmation. Tracks drop under jamming and come back with a new ID afterwards, so the trainee has to re-acquire.
+- [x] `scoring/roe.py` + `score_run()`: all four rubric metrics, ROE tree from section 6.3, plain-language notes for the AAR ("UAV-01: simulated_hard_kill at 61.0 s … earned 0.50").
+- [x] Event log: `truth_state` at 1 Hz (ROE context and AAR replay), `track_confirm` / `track_drop`; trainee events carry the simulator-resolved `truth_id`.
+- [ ] Trainee console (blocked on the OpenCV vs browser decision, section 13)
+- [ ] `sensors/eo.py`: emulated EO camera
+- [ ] Scenarios SCN-01..03
 
 ---
 

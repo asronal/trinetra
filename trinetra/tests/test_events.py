@@ -16,7 +16,8 @@ def test_make_event_rounds_time_and_keeps_fields():
     ({"t": True, "type": "run_end", "duration_s": 1}, "non-negative"),
     ({"t": 1.0, "type": "trainee_select", "track_id": 3}, "missing field"),
     ({"t": 1.0, "type": "truth_enter_coverage", "truth_id": "A", "sensor": "sonar"}, "unknown sensor"),
-    ({"t": 1.0, "type": "trainee_classify", "track_id": 1, "label": "ufo", "hostile": True}, "unknown label"),
+    ({"t": 1.0, "type": "trainee_classify", "track_id": 1, "truth_id": "A", "label": "ufo", "hostile": True},
+     "unknown label"),
 ])
 def test_invalid_events_are_rejected(event, msg):
     with pytest.raises(EventError, match=msg):
@@ -24,9 +25,10 @@ def test_invalid_events_are_rejected(event, msg):
 
 
 def test_only_simulated_response_actions_are_allowed():
-    validate_event({"t": 1.0, "type": "trainee_respond", "track_id": 1, "action": "simulated_soft_kill"})
+    validate_event({"t": 1.0, "type": "trainee_respond", "track_id": 1, "truth_id": None,
+                    "action": "simulated_soft_kill"})
     with pytest.raises(EventError, match="unknown action"):
-        validate_event({"t": 1.0, "type": "trainee_respond", "track_id": 1, "action": "fire"})
+        validate_event({"t": 1.0, "type": "trainee_respond", "track_id": 1, "truth_id": None, "action": "fire"})
 
 
 def test_log_writes_one_json_object_per_line_and_reads_back(tmp_path):

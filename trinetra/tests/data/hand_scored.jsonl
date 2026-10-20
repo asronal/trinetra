@@ -1,0 +1,22 @@
+{"t": 0.0, "type": "run_start", "scenario_id": "HAND-02", "seed": 1, "difficulty": "standard", "tick_hz": 10, "roe": "standard"}
+{"t": 1.0, "type": "truth_spawn", "truth_id": "UAV-01", "label": "quad", "hostile": true}
+{"t": 1.0, "type": "truth_spawn", "truth_id": "UAV-02", "label": "fixed_wing", "hostile": true}
+{"t": 1.0, "type": "truth_spawn", "truth_id": "BIRD-1", "label": "bird", "hostile": false}
+{"t": 2.0, "type": "truth_state", "truth_id": "UAV-01", "east_m": 0, "north_m": 2000, "alt_m": 60, "range_m": 2000, "bearing_deg": 0, "radial_speed_mps": 20}
+{"t": 2.0, "type": "truth_state", "truth_id": "UAV-02", "east_m": 1500, "north_m": 0, "alt_m": 150, "range_m": 1500, "bearing_deg": 90, "radial_speed_mps": 0}
+{"t": 2.0, "type": "truth_state", "truth_id": "BIRD-1", "east_m": -500, "north_m": 0, "alt_m": 40, "range_m": 500, "bearing_deg": 270, "radial_speed_mps": 0}
+{"t": 3.0, "type": "truth_enter_coverage", "truth_id": "UAV-01", "sensor": "radar"}
+{"t": 3.0, "type": "truth_enter_coverage", "truth_id": "UAV-02", "sensor": "radar"}
+{"t": 3.0, "type": "truth_enter_coverage", "truth_id": "BIRD-1", "sensor": "radar"}
+{"t": 6.0, "type": "trainee_select", "track_id": 1, "truth_id": "UAV-01"}
+{"t": 7.0, "type": "trainee_classify", "track_id": 1, "truth_id": "UAV-01", "label": "quad", "hostile": true}
+{"t": 8.0, "type": "trainee_respond", "track_id": 1, "truth_id": "UAV-01", "action": "alert_qrt"}
+{"t": 10.0, "type": "trainee_select", "track_id": 2, "truth_id": "BIRD-1"}
+{"t": 11.0, "type": "trainee_classify", "track_id": 2, "truth_id": "BIRD-1", "label": "quad", "hostile": true}
+{"t": 18.0, "type": "trainee_select", "track_id": 3, "truth_id": "UAV-02"}
+{"t": 19.0, "type": "trainee_classify", "track_id": 3, "truth_id": "UAV-02", "label": "quad", "hostile": true}
+{"t": 60.0, "type": "truth_state", "truth_id": "UAV-01", "east_m": 0, "north_m": 800, "alt_m": 60, "range_m": 800, "bearing_deg": 0, "radial_speed_mps": 20}
+{"t": 61.0, "type": "trainee_respond", "track_id": 1, "truth_id": "UAV-01", "action": "simulated_hard_kill"}
+{"t": 62.0, "type": "trainee_respond", "track_id": 1, "truth_id": "UAV-01", "action": "simulated_soft_kill"}
+{"t": 63.0, "type": "trainee_respond", "track_id": 1, "truth_id": "UAV-01", "action": "simulated_hard_kill"}
+{"t": 90.0, "type": "run_end", "duration_s": 90.0}

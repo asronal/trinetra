@@ -23,7 +23,7 @@ python -m pytest trinetra -q
 
 The run writes an event log to `output/trinetra/<scenario>_<time>.jsonl`. Options: `--difficulty guided|standard|stress|swarm`, `--duration 60`, `--seed N`, `--out path.jsonl`.
 
-## Layout (Phase 0)
+## Layout
 
 | Path | What it does |
 |---|---|
@@ -35,5 +35,8 @@ The run writes an event log to `output/trinetra/<scenario>_<time>.jsonl`. Option
 | `trinetra/core/behaviours.py` | Straight line and attack run |
 | `trinetra/core/scenario.py` | Scenario YAML loader and world builder |
 | `trinetra/sensors/radar.py` | Emulated radar: Pd vs RCS/range, noise, clutter, jamming, dropout; LD2450-compatible plots |
-| `trinetra/scoring/rubric.py` | Time to detect and its score |
+| `trinetra/sensors/ir.py` | Emulated thermal camera: sky/ground, drone and bird signatures, fog, noise; auto-contrast and palettes ported from SkyNetics |
+| `trinetra/ai/tracker.py` | Tracker on radar plots (Kalman, Hungarian, M-of-N confirmation) |
+| `trinetra/scoring/roe.py` | Rules-of-engagement tree and credit per simulated action |
+| `trinetra/scoring/rubric.py` | Run score: detect, classify, respond, false alarms, with plain-language notes |
 | `trinetra/scenarios/` | Scenario packs |
