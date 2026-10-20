@@ -64,7 +64,6 @@ After the mission, the **after-action review** shows the score, how many hostile
 
 ```powershell
 .venv\Scripts\python.exe -m trinetra.app --headless --scenario trinetra/scenarios/smoke.yaml   # no interface, log only
-.venv\Scripts\python.exe -m trinetra.app --opencv --scenario trinetra/scenarios/scn01_day_single.yaml   # older OpenCV console
 .venv\Scripts\python.exe -m trinetra.app --port 8800 --no-browser   # other port, don't open a browser
 ```
 
@@ -131,7 +130,7 @@ CI runs the same tests plus the smoke mission on every push (`.github/workflows/
 
 | Path | What it does |
 |---|---|
-| `trinetra/app.py` | Entry point: browser trainer (default), headless runner, OpenCV console |
+| `trinetra/app.py` | Entry point: browser trainer (default) and headless runner |
 | `trinetra/config.py` | Tick rate, run length, radar / thermal / tracker emulator settings |
 | `trinetra/core/scenario.py` | Mission YAML loader and validation; builds the world |
 | `trinetra/core/world.py`, `behaviours.py` | World model: entities, geometry, 10 Hz clock, flight paths |
@@ -144,7 +143,6 @@ CI runs the same tests plus the smoke mission on every push (`.github/workflows/
 | `trinetra/scoring/roe.py`, `rubric.py`, `aar.py` | Rules-of-engagement tree; run score and plain-language notes; after-action timeline |
 | `trinetra/server/` | Local web server and the real-time simulation runner |
 | `trinetra/web/` | Browser trainer: 3D day camera and overview (three.js r160, vendored), radar, heat camera, guided actions |
-| `trinetra/console/` | Older OpenCV console (`--opencv`) |
 | `trinetra/scenarios/` | Missions |
 | `trinetra/tests/` | Automated tests |
 

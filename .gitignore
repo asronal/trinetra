@@ -1,12 +1,45 @@
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
 .pytest_cache/
+.coverage
+htmlcov/
 
+# Virtual environments
 .venv/
 venv/
+env/
 
-# Run logs and recordings
+# Run output: event logs, recordings, screenshots
 output/
+*.log
+*.mp4
+*.avi
 
+# Model training data and weights (share via Git LFS or a release, not plain git)
+datasets/
+runs/
+*.pt
+*.pth
+*.onnx
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Editors and OS
 .vscode/
 .idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local tool state
+.remember/
+.claude/settings.local.json

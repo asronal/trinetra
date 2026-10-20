@@ -369,7 +369,7 @@ See [README.md](README.md) for setup and run commands. `requirements.txt` lists 
 - [x] `ai/tracker.py`: world-coordinate tracker on radar plots, M-of-N confirmation. Tracks drop under jamming and come back with a new ID afterwards, so the trainee has to re-acquire.
 - [x] `scoring/roe.py` + `score_run()`: all four rubric metrics, ROE tree from section 6.3, plain-language notes for the AAR ("UAV-01: simulated_hard_kill at 61.0 s … earned 0.50").
 - [x] Event log: `truth_state` at 1 Hz (ROE context and AAR replay), `track_confirm` / `track_drop`; trainee events carry the simulator-resolved `truth_id`.
-- [x] Trainee console: OpenCV first (radar scope, cued thermal view, keyboard actions, score screen). Superseded the same day by the browser trainer below; kept behind `--opencv`. `core/session.py` runs one training run for every interface and the headless runner.
+- [x] Trainee console: OpenCV first (radar scope, cued thermal view, keyboard actions, score screen). Superseded the same day by the browser trainer below and removed from the code before the first GitHub push (it remains in git history). `core/session.py` runs one training run for every interface and the headless runner.
 - [x] Simulated engagement outcomes: soft kill 70 %, hard kill 90 %, only within 1 km; a kill removes the target and is logged as `neutralised_simulated`.
 - [x] Scenarios SCN-01 (day, single quad), SCN-02 (dusk, FPV among friendly and birds, radar dropout), SCN-03 (night, recce fixed-wing + quad under jamming, IR noise)
 - [x] Tracker fix: two-stage association (confirmed tracks pick plots first); before it, a tentative track born beside a target could take over its plots and change its ID mid-run.

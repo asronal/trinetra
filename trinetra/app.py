@@ -3,7 +3,6 @@ TRINETRA — entry point.
 
     python -m trinetra.app                                                   # trainer in the browser
     python -m trinetra.app --scenario trinetra/scenarios/smoke.yaml --headless   # no window, log only
-    python -m trinetra.app --scenario <file> --opencv                        # old OpenCV console
 
 The browser trainer runs a local server (127.0.0.1 only) and opens the
 page; missions are chosen on its start screen. Headless runs as fast as
@@ -48,13 +47,11 @@ def run_headless(scenario: Scenario, cfg: Config, out_path, difficulty: str = "s
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="trinetra", description="TRINETRA counter-drone training simulator")
-    parser.add_argument("--scenario", help="scenario YAML file (headless and OpenCV modes)")
+    parser.add_argument("--scenario", help="scenario YAML file (headless mode)")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default="standard")
     parser.add_argument("--headless", action="store_true", help="run without any interface and only write the log")
-    parser.add_argument("--opencv", action="store_true", help="use the old OpenCV console instead of the browser")
     parser.add_argument("--port", type=int, default=8765, help="browser trainer port (default 8765)")
     parser.add_argument("--no-browser", action="store_true", help="start the server without opening a browser")
-    parser.add_argument("--instructor", action="store_true", help="OpenCV console starts with ground truth shown")
     parser.add_argument("--hil", action="store_true", help="use live Pi sensors (Phase 3)")
     parser.add_argument("--duration", type=float, default=None, help="run length in seconds (default: scenario, else 60)")
     parser.add_argument("--seed", type=int, default=None, help="override the scenario seed")
@@ -66,12 +63,12 @@ def main(argv=None) -> int:
                         format="%(asctime)s %(name)s %(levelname)s %(message)s")
     if args.hil:
         parser.error("HIL mode arrives in Phase 3")
-    if not args.headless and not args.opencv:
+    if not args.headless:
         from .server.web import serve
         serve(port=args.port, open_browser=not args.no_browser)
         return 0
     if not args.scenario:
-        parser.error("--scenario is required with --headless or --opencv")
+        parser.error("--scenario is required with --headless")
 
     cfg = Config()
     try:
@@ -82,18 +79,7 @@ def main(argv=None) -> int:
 
     out = args.out or Path(cfg.log_dir) / f"{scenario.id}_{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
     duration = args.duration or scenario.duration_s or cfg.duration_s
-
-    if args.headless:
-        print(run_headless(scenario, cfg, out, args.difficulty, duration, args.seed))
-        return 0
-
-    from .console.console import run_console      # imports OpenCV only when the console is used
-    session = Session(scenario, cfg, out, args.difficulty, args.seed, duration, with_ir=True)
-    score = run_console(session, instructor=args.instructor)
-    print(f"log: {session.log_path}")
-    print(f"score: {round(score.total * 100)} / 100")
-    for note in score.notes:
-        print(f"  - {note}")
+    print(run_headless(scenario, cfg, out, args.difficulty, duration, args.seed))
     return 0
 
 
